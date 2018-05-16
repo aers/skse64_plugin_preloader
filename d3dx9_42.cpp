@@ -543,7 +543,16 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 
 	if (reason == DLL_PROCESS_DETACH)
 	{
-		if (!isSkyrimSE)
+		if (isSkyrimSE)
+		{
+			if (!loadedLib.empty())
+			{
+				for (auto lib : loadedLib)
+					FreeLibrary(lib);
+				loadedLib.clear();
+			}
+		}
+		else
 		{
 			FreeLibrary(hL);
 		}
