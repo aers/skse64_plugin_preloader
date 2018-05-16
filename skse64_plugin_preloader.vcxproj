@@ -23,6 +23,7 @@
       <FileType>Document</FileType>
     </MASM>
     <None Include="d3dx9_42.def" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="d3dx9_42.cpp" />
