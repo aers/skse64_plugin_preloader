@@ -2,6 +2,8 @@
 
 port of [skse plugin preloader](https://www.nexusmods.com/skyrim/mods/75795) for skse64/SSE
 
+will also load dlls in SkyrimSE\CKPlugins\ into the CK
+
 based on code by meh321 & sheson
 
 in order to load after MO/MO2 VFS hooks the plugin load is delayed until _initterm_e is called, as meh321's [SSE dll loader](https://www.nexusmods.com/skyrimspecialedition/mods/10546/?) does
