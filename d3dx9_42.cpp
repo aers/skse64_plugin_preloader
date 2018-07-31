@@ -167,7 +167,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 		hLThis = hInst;
 
 		/*
-		 * Check if we're loaded by SkyrimSE.exe
+		 * Check if we're loaded by SkyrimSE.exe (or VR)
 		 * Purpose two-fold:
 		 *	1) Don't load skse plugins into things that aren't Skyrim (Creation Kit)
 		 *	2) SkyrimSE uses a very limited subset of d3dx9_42, with implementations provided in d3dx9_impl, so we don't need to load the actual dll in this case
@@ -181,9 +181,9 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 
 		skyrimPath = exePath;
 
-		if (_tcscmp(exeName, _T("SkyrimSE.exe")) == 0)
+		if (_tcscmp(exeName, _T("SkyrimSE.exe")) == 0 || _tcscmp(exeName, _T("SkyrimVR.exe")) == 0)
 		{
-			logFile << "loaded into SkyrimSE.exe, proxying SkyrimSE d3dx9_42 funcs and registering preload hook" << std::endl;
+			logFile << "loaded into SkyrimSE.exe or SkyrimVR.exe, proxying SkyrimSE d3dx9_42 funcs and registering preload hook" << std::endl;
 			isSkyrimSE = true;
 
 			// delay plugin preload so MO VFS has a chance to attach, otherwise loader won't see inside VFS
