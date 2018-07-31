@@ -10,7 +10,7 @@
 HINSTANCE hLThis = 0;
 FARPROC p[329];
 HINSTANCE hL = 0;
-bool loadedPlugins = false;
+bool isSkyrimSE = false;
 std::string logName = "d3dx9_42.log";
 
 PVOID origFunc = 0;
@@ -56,72 +56,6 @@ std::string GetPluginsDirectory()
 		pluginPath = pluginPath.substr(0, pos);
 
 	return pluginPath + "\\Data\\SKSE\\Plugins\\";
-}
-
-std::string GetCKPluginsDirectory()
-{
-	std::string pluginPath = skyrimPath;
-	auto pos = pluginPath.rfind('\\');
-	if (pos != std::string::npos)
-		pluginPath = pluginPath.substr(0, pos);
-
-	return pluginPath + "\\CKPlugins\\";
-}
-
-void LoadCKPlugins()
-{
-	if (alreadyLoaded)
-		return;
-
-	alreadyLoaded = true;
-
-	std::ofstream logFile(logName, std::ios_base::out | std::ios_base::app);
-
-	WIN32_FIND_DATA wfd;
-	std::string dir = GetCKPluginsDirectory();
-	std::string search_dlls = dir + "*.dll";
-	HANDLE hFind = FindFirstFile(search_dlls.c_str(), &wfd);
-
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			char plugin_path[MAX_PATH];
-
-			_snprintf_s(plugin_path, MAX_PATH, "%s%s.dll", dir.c_str(), wfd.cFileName);
-
-			logFile << "attempting to load " << plugin_path << std::endl;
-
-			int result = LoadDLLPlugin(plugin_path);
-
-			switch (result)
-			{
-			case 2:
-				logFile << "loaded successfully and Initialize() called" << std::endl;
-				break;
-			case 1:
-				logFile << "loaded successfully" << std::endl;
-				break;
-			case 0:
-				logFile << "LoadLibrary failed" << std::endl;
-				break;
-			case -1:
-				logFile << "LoadLibrary crashed, contact the plugin author" << std::endl;
-				break;
-			case -2:
-				logFile << "Initialize() crashed, contact the plugin author" << std::endl;
-				break;
-			}
-
-		} while (FindNextFile(hFind, &wfd));
-		FindClose(hFind);
-	}
-	else
-	{
-		logFile << "failed to search plugin directory" << std::endl;
-	}
-
-	logFile << "loader finished" << std::endl;
 }
 
 void LoadSKSEPlugins()
@@ -250,7 +184,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 		if (_tcscmp(exeName, _T("SkyrimSE.exe")) == 0)
 		{
 			logFile << "loaded into SkyrimSE.exe, proxying SkyrimSE d3dx9_42 funcs and registering preload hook" << std::endl;
-			loadedPlugins = true;
+			isSkyrimSE = true;
 
 			// delay plugin preload so MO VFS has a chance to attach, otherwise loader won't see inside VFS
 			auto moduleBase = reinterpret_cast<uintptr_t>(GetModuleHandle(nullptr));
@@ -261,7 +195,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 		}
 		else
 		{
-			logFile << "loaded into a non-SkyrimSE exe, proxying d3dx9_42 but not registering hooks" << std::endl;
+			logFile << "loaded into an unrecognized exe, proxying d3dx9_42 but not registering hooks" << std::endl;
 
 			TCHAR dllPath[MAX_PATH];
 			if (!GetSystemDirectory(dllPath, MAX_PATH))
@@ -604,19 +538,12 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 			p[328] = GetProcAddress(hL, "D3DXWeldVertices");
 
 			logFile << "success" << std::endl;
-
-			if (_tcscmp(exeName, _T("CreationKit.exe")) == 0)
-			{
-				logFile << "creation kit detected, injecting CK patch dlls" << std::endl;
-				loadedPlugins = true;
-				LoadCKPlugins();
-			}
 		}
 	}
 
 	if (reason == DLL_PROCESS_DETACH)
 	{
-		if (loadedPlugins)
+		if (isSkyrimSE)
 		{
 			if (!loadedLib.empty())
 			{
@@ -625,8 +552,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 				loadedLib.clear();
 			}
 		}
-
-		if (hL)
+		else
 		{
 			FreeLibrary(hL);
 		}
