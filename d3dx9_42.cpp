@@ -17,6 +17,7 @@ PVOID origFunc = 0;
 
 std::string skyrimPath;
 bool alreadyLoaded = false;
+bool alreadyLoadedDLLPlugins = false;
 std::vector<HINSTANCE> loadedLib;
 
 int LoadDLLPlugin(const char * path)
@@ -48,6 +49,16 @@ int LoadDLLPlugin(const char * path)
 	return state;
 }
 
+std::string GetMehLoaderDLLPath()
+{
+    std::string pluginPath = skyrimPath;
+    auto pos = pluginPath.rfind('\\');
+    if (pos != std::string::npos)
+        pluginPath = pluginPath.substr(0, pos);
+
+    return pluginPath + "\\binkw64_.dll";
+}
+
 std::string GetPluginsDirectory()
 {
 	std::string pluginPath = skyrimPath;
@@ -57,6 +68,83 @@ std::string GetPluginsDirectory()
 
 	return pluginPath + "\\Data\\SKSE\\Plugins\\";
 }
+
+std::string GetDLLPluginsDirectory()
+{
+    std::string pluginPath = skyrimPath;
+    auto pos = pluginPath.rfind('\\');
+    if (pos != std::string::npos)
+        pluginPath = pluginPath.substr(0, pos);
+
+    return pluginPath + "\\Data\\DLLPlugins\\";
+}
+
+void LoadDLLPlugins()
+{
+    if (alreadyLoadedDLLPlugins)
+        return;
+
+    alreadyLoadedDLLPlugins = true;
+
+    if (PathFileExists(GetMehLoaderDLLPath().c_str()))
+        return;
+
+
+    std::ofstream logFile(logName, std::ios_base::out | std::ios_base::app);
+
+    logFile << "hook triggered, loading dll plugins (meh's loader)" << std::endl;
+
+    WIN32_FIND_DATA wfd;
+
+    std::string dir = GetDLLPluginsDirectory();
+    std::string search_dir = dir + "*.dll";
+    HANDLE hFind = FindFirstFile(search_dir.c_str(), &wfd);
+
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+                continue;
+
+            std::string fileName = wfd.cFileName;
+            fileName = dir + fileName;
+
+            logFile << "attempting to load \"" << fileName.c_str() << "\"" << std::endl;
+
+            int result = LoadDLLPlugin(fileName.c_str());
+
+            switch (result)
+            {
+            case 2:
+                logFile << "loaded successfully and Initialize() called" << std::endl;
+                break;
+            case 1:
+                logFile << "loaded successfully" << std::endl;
+                break;
+            case 0:
+                logFile << "LoadLibrary failed" << std::endl;
+                break;
+            case -1:
+                logFile << "LoadLibrary crashed, contact the plugin author" << std::endl;
+                break;
+            case -2:
+                logFile << "Initialize() crashed, contact the plugin author" << std::endl;
+                break;
+            }
+
+
+        } while (FindNextFile(hFind, &wfd));
+        FindClose(hFind);
+    }
+    else
+    {
+        logFile << "failed to search dll plugin directory" << std::endl;
+    }
+
+    logFile << "DLLPlugin loader finished" << std::endl;
+}
+
 
 void LoadSKSEPlugins()
 {
@@ -152,6 +240,7 @@ void LoadSKSEPlugins()
 
 PVOID hookedFunc(PVOID arg1, PVOID arg2)
 {
+    LoadDLLPlugins();
 	LoadSKSEPlugins();
 	return ((PVOID(*)(PVOID, PVOID))origFunc)(arg1, arg2);
 }
